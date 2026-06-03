@@ -1,0 +1,738 @@
+
+# Koushik 
+setwd("C:/Users/IsmaSA/Desktop/Collaborations/Koushik")
+
+list.files()
+df <- read_xlsx("Time series .xlsx")
+df <- df[!is.na(df$`Group ID`),]
+head(df)
+unique(df$`Group ID`)
+
+df <- df %>%
+  mutate(
+    reproductive_stage = case_when(
+      str_detect(`Group ID`, "E") ~ "Eggs",
+      str_detect(`Group ID`, "N") ~ "Non reproductive",
+      str_detect(`Group ID`, "G") ~ "Glair glands",
+      TRUE                        ~ "Other"  )) 
+      
+df <- df %>%
+  mutate(
+    visit_duration = as.numeric(difftime(`Time Out`, `Time in`, units = "mins")))
+
+individual_summary <- df %>%
+  group_by(`Group ID`, reproductive_stage) %>%
+  summarise(
+    total_time = sum(visit_duration, na.rm = TRUE),
+    n_visits = n(),
+    avg_time_per_visit = total_time / n_visits,
+    .groups = "drop" )
+
+str(individual_summary)
+summary_stats <- individual_summary %>% as.data.frame() %>%
+  mutate(reproductive_stage = str_trim(reproductive_stage))  %>%
+  group_by(reproductive_stage) %>%
+  summarise(
+    avg_time_spent = mean(total_time, na.rm = TRUE),
+    sd_time_spent = sd(total_time, na.rm = TRUE),
+    
+    avg_visits = mean(n_visits, na.rm = TRUE),
+    sd_visits = sd(n_visits, na.rm = TRUE),
+    
+    avg_time_per_visit = mean(avg_time_per_visit, na.rm = TRUE),
+    sd_time_per_visit = sd(avg_time_per_visit) )
+
+summary_stats$sd_time_per_visit2 = c(106.85,1.60,12.60)
+
+sd = individual_summary %>% group_by(reproductive_stage) %>% 
+  summarise(sd= sd(avg_time_per_visit))
+
+p1<- ggplot(summary_stats, aes(x = reproductive_stage, y = avg_time_spent,
+        fill = reproductive_stage)) +
+  geom_col(color='black', size= 0.2) +
+  labs(
+    y = "Average time per in the shelter", x=""
+  ) +
+  geom_errorbar(
+    aes(ymin = pmax(0, avg_time_spent - sd_time_spent),
+        ymax = avg_time_spent + sd_time_spent),
+    width = 0.2
+  )+
+  theme_bw() + theme(legend.position = "none") +
+  scale_x_discrete(labels = c(
+    "Eggs"            = "Eggs",
+    "Glair glands"    = "Glair glands",
+    "Non reproductive"= "Non reproductive"
+  ))+
+  scale_fill_manual(
+    values = c(
+      "Eggs" = "forestgreen",
+      "Non reproductive" = "deepskyblue3",
+      "Glair glands" = "chocolate3")) 
+p1
+# Bar plot of total time (minutes) by reproductive stage
+p2<- ggplot(summary_stats, aes(x = reproductive_stage, y = avg_visits, fill = reproductive_stage)) +
+  geom_col(color='black', size= 0.2) +
+  labs(
+    y = "Average number of visits", x=""
+  ) +
+  theme_bw() + theme(legend.position = "none") +
+  geom_errorbar(
+    aes(ymin = pmax(0, avg_visits - sd_visits),
+        ymax = avg_visits + sd_visits),
+    width = 0.2
+  )+
+  scale_x_discrete(labels = c(
+    "Eggs"            = "Eggs",
+    "Glair glands"    = "Glair glands",
+    "Non reproductive"= "Non reproductive"
+  ))+
+  scale_fill_manual(
+    values = c(
+      "Eggs" = "forestgreen",
+      "Non reproductive" = "deepskyblue3",
+      "Glair glands" = "chocolate3")) 
+p2
+# Bar plot of average time (minutes) by reproductive stage
+p3<- ggplot(summary_stats, aes(x = reproductive_stage, y = avg_time_per_visit, fill = reproductive_stage)) +
+  geom_col(color='black', size= 0.2) +
+  labs(
+    y = "Average time (min)", x=""
+  ) +
+  theme_bw() + theme(legend.position = "none") +
+  geom_errorbar(
+    aes(ymin = pmax(0, avg_time_per_visit - sd_time_per_visit2),
+        ymax = avg_time_per_visit + sd_time_per_visit2),
+    width = 0.2
+  )+
+  scale_x_discrete(labels = c(
+    "Eggs"            = "Eggs",
+    "Glair glands"    = "Glair glands",
+    "Non reproductive"= "Non reproductive"
+  ))+
+  scale_fill_manual(
+    values = c(
+      "Eggs" = "forestgreen",
+      "Non reproductive" = "deepskyblue3",
+      "Glair glands" = "chocolate3")) 
+
+p3
+p1 + p2 + p3
+
+
+
+
+
+
+ggplot(
+  data = df,
+  aes(
+    x = `Time in`,           # Start of each visit
+    xend = `Time Out`,       # End of each visit
+    y = `Group ID`,          # Group ID on y-axis
+    yend = `Group ID`,       # Must match y to make a horizontal segment
+    color = reproductive_stage
+  )
+) +
+  geom_segment(size = 2) +
+  scale_x_datetime(
+    date_breaks = "1 hour",   # Adjust as needed
+    date_labels = "%H:%M"     # Only show time (HH:MM)
+  ) +
+  labs(
+    x = "Time",
+    y = "Group ID",
+    color = "Reproductive Stage"
+  ) +
+  theme_bw() + 
+  scale_color_manual(
+    values = c(
+      "Eggs" = "forestgreen",
+      "Non_reproductive" = "deepskyblue3",
+      "Glair_glands" = "chocolate3")) 
+
+
+# Old plots:
+library(frair)
+df <- read_excel("Tonda_student.xlsx", sheet = "Ismael")
+df[is.na(df)] <- 0
+
+df1<- df[,c(1:11)] #Group Non-reproductive
+df2<- df[,c(2,12:20)] #Group Glands
+df3<- df[,c(2,21:29)] #Group Eggs
+
+frair_test(formula = Total  ~  `Prey density` , data = df1) 
+frair_test(formula = Total1  ~  `Prey density` , data = df2)
+frair_test(formula = Total2  ~  `Prey density` , data = df3) 
+
+
+## Result
+
+#Functional response analyse
+#a: attack rate
+#h: handling time
+#T: time exp
+
+g_fit1 <- frair_fit(formula = Total ~ `Prey density`, data = df1,
+                    response = "rogersII",
+                    start = list(a = 1, h = 0.1),
+                    fixed = list(T = 1)) 
+with(df1, plot(`Prey density`, Total, xlab="Prey Density",
+               ylab="No. Prey Eaten"))
+lines(g_fit1, lty = 1, col = "grey25")
+print(g_fit1)
+summary(g_fit1$fit)
+
+
+g_fit2 <- frair_fit(formula = Total1 ~ `Prey density`, data = df2,
+                    response = "rogersII",
+                    start = list(a = 1, h = 0.1),
+                    fixed = list(T = 1)) #days
+with(df2, plot(`Prey density`, Total1, xlab="Prey Density",
+               ylab="No. Prey Eaten"))
+lines(g_fit2, lty = 1, col = "grey55")
+print(g_fit2)
+summary(g_fit2$fit)
+
+
+g_fit3 <- frair_fit(formula = Total2 ~ `Prey density`, data = df3,
+                    response = "rogersII",
+                    start = list(a = 1, h = 0.1),
+                    fixed = list(T = 1)) #days
+with(df3, plot(`Prey density`, Total2, xlab="Prey Density",
+               ylab="No. Prey Eaten"))
+lines(g_fit3, lty = 1, col = "grey55")
+print(g_fit3)
+summary(g_fit3$fit)
+
+
+
+fitp_fit1 <- frair_boot(g_fit1)
+confint(fitp_fit1 , citypes ='bca')
+
+fitp_fit2 <- frair_boot(g_fit2)
+confint(fitp_fit2 , citypes ='bca')
+
+fitp_fit3 <- frair_boot(g_fit3)
+confint(fitp_fit3 , citypes ='bca')
+
+
+## PLOT
+
+#svg("Figure1.svg")
+#df1<- df[,c(1:11)] #Group Non-reproductive
+#df2<- df[,c(2,12:20)] #Group Glands
+#df3<- df[,c(2,21:29)] #Group Eggs
+
+eggs = data.frame(x = df3$`Prey density`, y = df3$Total2, pch="x", cex=0.7, col= "forestgreen" ) 
+gg =  data.frame(x = df2$`Prey density`, y = df2$Total1, pch="+", cex=0.9, col= "chocolate3") 
+nr =  data.frame(x = df1$`Prey density`, y = df1$Total, pch="*", cex=0.9, col = "deepskyblue3" ) 
+
+plot(x = 1,
+     type = "n",
+     xlim = c(0, 26), 
+     ylim = c(0, 15),
+     xlab="Prey Density", ylab="No. of prey killed", xaxt = "n", font.lab = 2)
+axis(side = 1,  at = c(1, 3, 6, 12, 18, 24), labels = c(1, 3, 6, 12, 18, 24))
+
+drawpoly(fitp_fit1, col=("deepskyblue1"), border=NA, tozero=TRUE)
+drawpoly(fitp_fit2, col=("chocolate1"), border=NA, tozero=TRUE)
+drawpoly(fitp_fit3, col=("lightgreen"), border=NA, tozero=TRUE)
+
+points(
+  x = jitter(df1$`Prey density`, factor = 1.5),
+  y = jitter(df1$Total, factor = 1.5),
+  pch = "+",cex = 0.9,
+  col = adjustcolor("deepskyblue3", alpha.f = 0.7) )
+
+points(
+  x = jitter(df2$`Prey density`, factor = 1.5),
+  y = jitter(df2$Total1, factor = 1.5),
+  pch = "X",cex = 0.9,
+  col = adjustcolor("chocolate3", alpha.f = 0.7) )
+
+points(
+  x = jitter(df3$`Prey density`, factor = 1.5),
+  y = jitter(df3$Total2, factor = 1.5),
+  pch = "*",cex = 0.9,
+  col = adjustcolor("forestgreen", alpha.f = 0.7) )
+
+
+lines(g_fit1, col = "deepskyblue3", lty=1, lwd=3) ##Group Non-reproductive
+lines(g_fit2, col = "chocolate3",lty=2,  lwd=3 ) #Glands
+lines(g_fit3, col = "forestgreen",lty=3,  lwd=3 ) #Eggs
+
+legend(1, 14, legend=c("Non-reproductive", "Glair glands","Eggs"),
+       col=c("deepskyblue3", "chocolate3","forestgreen"), lty=1:2, cex=0.8)
+dev.off()
+
+
+
+### Check the attack rate (a) and handling time (h) through error bars from bootstraps
+
+
+########### Ahora plot boxplots
+
+a<- fitp_fit1$bootcoefs %>% as.data.frame() %>% mutate(Lower="2.883",
+                                                       Upper="8.81",
+                                                       point="4.600") 
+a$Clawless <- "Non-reproductive"
+b<- fitp_fit2$bootcoefs %>% as.data.frame()%>% mutate(Lower="1.372",
+                                                      Upper="4.322",
+                                                      point="2.447")
+b$Clawless <- "Glair glands"
+c<- fitp_fit3$bootcoefs %>% as.data.frame()%>% mutate(Lower="0.25",
+                                                      Upper="7.863",
+                                                      point="1.044")
+c$Clawless <- "Eggs"
+
+df<- bind_rows(a,b,c)
+str(df)
+
+str(df)
+df$Lower<- as.numeric(df$Lower)
+df$Upper<- as.numeric(df$Upper)
+df$point<- as.numeric(df$point)
+
+df$Clawless <- factor(df$Clawless, 
+                      levels = c("Non-reproductive","Glair glands","Eggs"))
+
+df <- df[!duplicated(df$Clawless),]
+
+#svg("p1.svg")
+p<- ggplot(df, aes(Clawless,a,colour = Clawless)) 
+p1<- p + geom_errorbar(aes(ymin = Lower, ymax = Upper), width = 0.2) +theme_bw(base_size = 14) + ylab("Attack rate (± SE)")+
+  ylim(0,10)+ geom_point(data=df,aes(Clawless,point)) +
+  xlab("")+theme(legend.position = "none") +
+  scale_color_manual(
+    values = c(
+      "Eggs" = "forestgreen",
+      "Non-reproductive" = "deepskyblue3",
+      "Glair glands" = "chocolate3")) 
+p1 
+dev.off()
+
+
+
+d<- fitp_fit1$bootcoefs %>% as.data.frame() %>% mutate(Lower="0.101",
+                                                       Upper="0.146",
+                                                       point="0.121") 
+d$Clawless <- "Non-reproductive"
+e<- fitp_fit2$bootcoefs %>% as.data.frame()%>% mutate(Lower="0.164",
+                                                      Upper="0.281",
+                                                      point="0.224")
+e$Clawless <- "Glair glands"
+f<- fitp_fit3$bootcoefs %>% as.data.frame()%>% mutate(Lower="0.482",
+                                                      Upper="1.145",
+                                                      point="0.764")
+f$Clawless <- "Eggs"
+
+df1<- bind_rows(d,e,f)
+str(df1)
+
+str(df1)
+df1$Lower<- as.numeric(df1$Lower)
+df1$Upper<- as.numeric(df1$Upper)
+df1$point<- as.numeric(df1$point)
+
+df1$Clawless <- factor(df1$Clawless, 
+                       levels = c("Non-reproductive","Glair glands","Eggs"))
+
+df1 <- df1[!duplicated(df1$Clawless),]
+
+
+#svg("p2.svg")
+p<- ggplot(df1, aes(Clawless,h,colour = Clawless)) 
+p2<-p + geom_errorbar(aes(ymin = Lower, ymax = Upper), width = 0.2) +theme_bw(base_size = 14) + 
+  ylab("Handling time (± SE)") + geom_point(data=df1,aes(Clawless,point))+ylim(0,1.2)+
+  xlab("") + theme(legend.position = "none") +
+  scale_color_manual(
+    values = c(
+      "Eggs" = "forestgreen",
+      "Non-reproductive" = "deepskyblue3",
+      "Glair glands" = "chocolate3")) 
+
+p2
+dev.off()
+library(patchwork)
+p1+p2
+
+
+## Partial consumption of prey
+
+df <- read_excel("Tonda_student.xlsx", sheet = "Ismael")
+head(df)
+
+df[is.na(df)] <- 0
+
+df1<- df[,c(1:10)] #Group Non-reproductive
+df1 <- df1[,-1]
+colnames(df1) <- c("Prey.density","Code","Alive",
+            "Killed","0.75.Killed","0.5.Killed","0.25.Killed","0.Killed","Total")
+
+df2<- df[,c(2,11:18)] #Group eggs
+colnames(df2) <- c("Prey.density",'NA', "Code","Alive",
+                   "Killed","0.75.Killed","0.5.Killed","0.25.Killed","0.Killed")
+df3<- df[,c(2,19:27)] #Group glands
+colnames(df3) <- c("Prey.density",'NA','NA', "Code","Alive",
+                   "Killed","0.75.Killed","0.5.Killed","0.25.Killed","0.Killed")
+
+df1 <- df1[,-9]
+df2 <- df2[,-2]
+df3 <- df3[,-c(2,3)]
+
+df<- rbind(df1,df2,df3)
+
+df$Partial <- df$`0.75.Killed` + df$`0.5.Killed` + df$`0.25.Killed`+ df$`0.25.Killed`
+df$Full <- df$Killed + df$Partial 
+
+
+df$Code <- as.factor(df$Code)
+head(df)
+
+### Zero inflated because there are mannnnnnnnnnnny 0 (more than expected)
+head(df)
+str(df)
+hist(df$Partial)
+
+
+model1 <- glmmTMB(cbind(Partial, Full) ~ Code*Prey.density, ziformula = ~1,
+                  data = df, family = binomial(link = "logit"))
+summary(model1)
+
+
+library(car)
+result<-car::Anova(model1, Type=3)
+result
+
+library(lsmeans)
+lsmeans(model1,pairwise~Code,data=df) 
+
+## Repeat the model for exp 2  ----
+
+df <- read_excel("Tonda_student.xlsx", sheet = "Experiment 2")
+head(df)
+
+df = df[,-c(2:6,13,15:19,26,28:32)]
+
+df1<- df[,c(1:7)] 
+df1 = df1[-1,]
+colnames(df1) <- c("Code","Alive","Killed","0.75.Killed","0.5.Killed",
+                  "0.25.Killed","0.Killed")
+
+df2<- df[,c(8:14)] #Group eggs
+df2 = df2[-1,]
+colnames(df2) <- c("Code","Alive","Killed","0.75.Killed","0.5.Killed",
+                   "0.25.Killed","0.Killed")
+
+df3<- df[,c(15:21)] #Group glands
+df3 = df3[-1,]
+colnames(df3) <-c("Code","Alive","Killed","0.75.Killed","0.5.Killed",
+                  "0.25.Killed","0.Killed")
+
+df<- rbind(df1,df2,df3)
+df = df[!is.na(df$Code),]
+
+df$`0.Killed` <- as.numeric(df$`0.Killed`)
+df$`0.25.Killed` <- as.numeric(df$`0.25.Killed`)
+df$`0.5.Killed` <- as.numeric(df$`0.5.Killed`)
+df$`0.75.Killed` <- as.numeric(df$`0.75.Killed`)
+
+df[is.na(df)] <- 0
+
+df$Partial <- df$`0.75.Killed` + df$`0.5.Killed` + df$`0.25.Killed`+ df$`0.25.Killed`
+df$Full <- df$Killed + df$Partial 
+
+str(df)
+df$Group <- substr(df$Code, 1, 1)
+model2 <- glmmTMB(cbind(Partial, Full) ~ Group, ziformula = ~1,
+                  data = df, family = binomial(link = "logit"))
+summary(model2)
+
+
+library(car)
+result<-car::Anova(model2, Type=3)
+result
+
+library(lsmeans)
+lsmeans(model2,pairwise~Group,data=df) 
+
+## Partial consumption plot (all groups combined)
+
+exp1= read_xlsx('FR REPRODUCTION STATUS OF FEMALES complete.xlsx', sheet =1)[,c(1:3,13,14:16,26:29,39)]
+exp2= read_xlsx('FR REPRODUCTION STATUS OF FEMALES complete.xlsx', sheet =2)[,c(1:3,13,14:16,26:29,39)]
+exp3= read_xlsx('FR REPRODUCTION STATUS OF FEMALES complete.xlsx', sheet =3)[,c(1:3,13,14:16,26:29,39)]
+
+exp1= exp1[c(1:72), ]
+exp1= exp1[,-c(3,7,11) ]
+exp2= exp2[c(1:54), ]
+exp2= exp2[,-c(2,3,6,7,10,11) ]
+exp2$Prey= 12
+exp3= exp3[c(1:32), ]
+exp3= exp3[,-c(2,3,6,7,10,11) ]
+exp3$Prey= 12
+
+colnames(exp1) <- c(
+  "Code_N", "Prey_N", "Partial_N","Code_G", "Prey_G", "Partial_G","Code_E", "Prey_E", "Partial_E")
+exp1 <- exp1 %>% mutate(RowID = row_number())
+
+exp1_long <- exp1 %>%
+  pivot_longer(
+    cols = c(Code_N, Prey_N, Partial_N,
+             Code_G, Prey_G, Partial_G,
+             Code_E, Prey_E, Partial_E),
+    names_to = c(".value", "Group"),names_sep = "_"  ) %>%
+  dplyr::select(Group, Prey, Partial)
+
+
+colnames(exp2) <- c(
+  "Code_G","Partial_G","Code_E", "Partial_E", "Code_N","Partial_N", "Prey")
+exp2 <- exp2 %>% mutate(RowID = row_number())
+
+exp2_long <- exp2 %>%
+  pivot_longer(
+    cols = c(Code_G, Partial_G, Code_E, Partial_E, Code_N, Partial_N),
+    names_to = c(".value", "Group"),
+    names_sep = "_" ) %>%  
+  dplyr::select(Group, Prey, Partial)
+
+colnames(exp3) <- c(
+  "Code_N","Partial_N","Code_G", "Partial_G", "Code_E","Partial_E", "Prey")
+exp3 <- exp3 %>% mutate(RowID = row_number())
+
+exp3_long <- exp3 %>%
+  pivot_longer(
+    cols = c(Code_G, Partial_G, Code_E, Partial_E, Code_N, Partial_N),
+    names_to = c(".value", "Group"),
+    names_sep = "_" ) %>%  
+  dplyr::select(Group, Prey, Partial)
+
+exp1_long$Experiment = 'Experiment 1'
+exp2_long$Experiment =  'Experiment 2'
+exp3_long$Experiment =  'Experiment 3'
+
+full.df = rbind(exp1_long,exp2_long,exp3_long)
+summary_stats <- full.df %>%
+  group_by(Group, Prey, Experiment) %>%
+  summarise(
+    mean_partial = mean(Partial, na.rm = TRUE),
+    sd_partial = sd(Partial, na.rm = TRUE),.groups = "drop")
+
+summary_stats <- summary_stats %>%
+  mutate(Prey_density = factor(Prey, levels = c(1, 3, 6, 12, 18, 24)))
+
+ggplot(summary_stats, aes(x = Prey, y = mean_partial, ymin = mean_partial - sd_partial, ymax = mean_partial + sd_partial)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+  geom_pointrange(
+    aes(color = Group, shape = Experiment),
+    position = position_dodge(width = 4),
+    size = 0.8,
+    fatten = 2
+  ) +
+  theme_bw(base_size = 14) +
+  theme(
+    legend.position = "right",
+    axis.title = element_text(face = "bold")) +
+  ylab("Prey partially consumed") +
+  scale_x_discrete(
+    name = "Prey density",
+    limits = c("1", "3", "6", "12", "18", "24")
+  ) +
+  scale_color_manual(
+    values = c(
+      "E" = "forestgreen",
+      "N" = "deepskyblue3",
+      "G" = "chocolate3"))
+
+
+
+
+# Old plot to have a reference:
+
+setwd("C:/Users/isma-/OneDrive/Escritorio/Tonda")
+df <- read_excel("Tonda_student.xlsx", sheet = "Sheet4")
+head(df)
+
+svg("Figure3.svg")
+ggplot(df,  aes(x = Prey_density, y = Average, ymin = Average-SD, ymax = Average+SD))+
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+  geom_pointrange(aes(color = Group), position = position_dodge(width = 2)) + 
+  theme_bw(base_size=14)+ theme(legend.position = 'none') +ylab("Prey partially consumed") +
+  scale_x_discrete(name ="Prey density", 
+                   limits=c("1","3","6","12","18","24")) +
+  scale_color_manual(
+    values = c(
+      "E" = "forestgreen",
+      "N" = "deepskyblue3",
+      "G" = "chocolate3"))
+dev.off()
+
+
+
+### Experiment 2 -------------
+
+df= read_xlsx('FR REPRODUCTION STATUS OF FEMALES complete.xlsx', sheet =2)
+
+
+g =df[,c(1:12)]
+e =df[,c(14:25)]
+n =df[,c(27:38)]
+
+nam = c('Code','NA','NA','CL','W','Note','Alive','E100','E75','E50','E25','E0')
+colnames(g) = nam
+colnames(e) = nam
+colnames(n) = nam
+
+g =g[-1,]
+e =e[-1,]
+n =n[-1,]
+
+g =g[,-2]
+e =e[,-2]
+n =n[,-2]
+
+g <- g %>%
+  rename_with(.fn = make.unique) %>%
+  mutate(
+    Shelter = ifelse(grepl("\\+", Code), "Shelter", "No shelter"))
+e <- e %>%
+  rename_with(.fn = make.unique) %>%
+  mutate(
+    Shelter = ifelse(grepl("\\+", Code), "Shelter", "No shelter"))
+n <- n %>%
+  rename_with(.fn = make.unique) %>%
+  mutate(
+    Shelter = ifelse(grepl("\\+", Code), "Shelter", "No shelter"))
+
+g$killed <- rowSums(
+  cbind(g$E100, g$E75, g$E50, g$E25, as.numeric(g$E0)),na.rm = TRUE)
+e$killed <- rowSums(
+  cbind(e$E100, e$E75, e$E50, e$E25, as.numeric(e$E0)),na.rm = TRUE)
+n$killed <- rowSums(
+  cbind(n$E100, n$E75, n$E50, n$E25, as.numeric(n$E0)),na.rm = TRUE)
+g$type ='Glair glands'
+e$type ='Eggs'
+n$type ='Non reproductive'
+d= cbind(g[,c(1,12,13,14)], e[,c(1,12,13,14)], n[,c(1,12,13,14)])
+
+names(d) <- make.unique(names(d))
+
+d_long <- d %>%
+  mutate(row = row_number()) %>%
+  pivot_longer(
+    cols = -row,
+    names_to = c(".value", "group"),
+    names_pattern = "(Code|Shelter|killed|type)(\\d*)"
+  ) %>%
+  dplyr::select(-group)
+
+
+df_summary <- d_long %>%
+  group_by(Shelter, type) %>%
+  summarise(
+    mean_killed = mean(killed, na.rm = TRUE),
+    se_killed = sd(killed, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop")
+
+# Shelter presence vs absence 
+df_summary$type[df_summary$type == "Non reproductive"] <- "Non-reproductive"
+d_long$type[d_long$type == "Non reproductive"] <- "Non-reproductive"
+
+ggplot(df_summary, aes(x = type, y = mean_killed, fill = type)) +
+  geom_col(position = position_dodge(width = 0.9), width = 0.7, color='black', size=0.1) +
+  geom_errorbar(aes(ymin = mean_killed - se_killed,
+                    ymax = mean_killed + se_killed),
+                width = 0.2,
+                position = position_dodge(width = 0.9))  + 
+  facet_wrap(~ Shelter, labeller = as_labeller(c("Shelter" = "Shelter present", "No shelter" = "Shelter absent"))) +
+  scale_fill_manual(
+    values = c(
+      "Eggs" = "forestgreen",
+      "Non-reproductive" = "deepskyblue3",
+      "Glair glands" = "chocolate3")) + labs(y = "No. of prey killed", x = NULL) +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    axis.title = element_text(face="bold"),
+    strip.text = element_text(face = "bold", size = 12))
+
+
+# Model to test the reliance on feeding vc sheltering in depending on their reproduction
+# Here it is using exp 2
+head(d_long)
+glimpse(d_long)
+d_long$Shelter <- as.factor(d_long$Shelter)
+d_long$type <- as.factor(d_long$type)
+
+table(d_long$Shelter, d_long$type)
+
+
+mod1 <- glm(killed ~ Shelter * type, family = poisson(link = "log"), data = d_long)
+summary(mod1)
+overdispersion <- sum(residuals(mod1, type = "pearson")^2) / df.residual(mod1)
+print(overdispersion)  # If > 1.5–2, use negative binomial
+library(emmeans)
+emmeans(mod1, pairwise ~ Shelter | type)
+emmeans(mod1, pairwise ~ type | Shelter)
+
+
+em_results <- emmeans(mod1, pairwise ~ Shelter | type)
+subset(em_results$contrasts, type == "Non-reproductive")
+
+
+
+# Here it is using exp 3 ----
+exp3= read_xlsx('FR REPRODUCTION STATUS OF FEMALES complete.xlsx', sheet =3)[c(1:32),]
+
+e =exp3[,c(27:38)]
+e =e[,-c(3,4,5,6,7)]
+g =exp3[,c(14:25)]
+g =g[,-c(3,4,5,6,7)]
+n =exp3[,c(1:12)]
+n =n[,-c(3,4,5,6,7)]
+
+nam = c('Code','Shelter','E100','E75','E50','E25','E0')
+colnames(g) = nam
+colnames(e) = nam
+colnames(n) = nam
+
+g$killed <- rowSums(
+  cbind(g$E100, g$E75, g$E50, g$E25, as.numeric(g$E0)),na.rm = TRUE)
+e$killed <- rowSums(
+  cbind(e$E100, e$E75, e$E50, e$E25, as.numeric(e$E0)),na.rm = TRUE)
+n$killed <- rowSums(
+  cbind(n$E100, n$E75, n$E50, n$E25, as.numeric(n$E0)),na.rm = TRUE)
+g$type ='Glair glands'
+e$type ='Eggs'
+n$type ='Non reproductive'
+
+
+d= rbind(g[,c(1,2,8,9)], e[,c(1,2,8,9)], n[,c(1,2,8,9)])
+d <- d[,-1]
+
+glimpse(d)
+d$Shelter[d$Shelter == "-"] <- "No shelter"
+d$Shelter[d$Shelter == "+"] <- "Shelter"
+
+d$Shelter <- as.factor(d$Shelter)
+d$type <- as.factor(d$type)
+
+table(d$Shelter, d$type)
+
+p2<- ggplot(d, aes(x = Shelter, y = killed, fill = type)) +
+  geom_boxplot(position = position_dodge()) +
+  labs(y = "No. prey eaten", x = "Shelter presence", fill = "Reproductive stage") +
+  theme_bw(base_size = 14) +  scale_fill_manual(
+    values = c(
+      "Eggs" = "forestgreen",
+      "Non reproductive" = "deepskyblue3",
+      "Glair glands" = "chocolate3"))
+
+mod2 <- glm(killed ~ Shelter * type, family = poisson(link = "log"), data = d)
+summary(mod2)
+overdispersion <- sum(residuals(mod2, type = "pearson")^2) / df.residual(mod2)
+print(overdispersion)  # If > 1.5–2, use negative binomial
+library(emmeans)
+emmeans(mod2, pairwise ~ Shelter | type)
+
+p1  + p2 
